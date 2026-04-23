@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoDiag — Engine Health</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+
+  <header>
+    <div class="logo">⬡ AutoDiag</div>
+    <p class="tagline">Engine Health Predictor</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h1>Diagnose Your Engine</h1>
+      <p class="sub">Enter your vehicle details to get an instant AI-powered health assessment.</p>
+
+      <form id="diagForm">
+
+        <!-- Row 1: Brand + Model (model updates dynamically) -->
+        <div class="row">
+          <div class="field">
+            <label for="brand">Brand</label>
+            <select id="brand" name="brand" required>
+              {% for b in brands %}
+              <option value="{{ b }}">{{ b }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="model">Model</label>
+            <select id="model" name="model" required>
+              <!-- populated by JS on page load & brand change -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Engine Type + Year -->
+        <div class="row">
+          <div class="field">
+            <label for="engine_type">Engine Type</label>
+            <select id="engine_type" name="engine_type" required>
+              {% for e in engine_types %}
+              <option value="{{ e }}">{{ e }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="year">Year</label>
+            <input type="number" id="year" name="year"
+                   placeholder="e.g. 2019" min="2000" max="2024" required>
+          </div>
+        </div>
+
+        <!-- Row 3: Horsepower + Mileage -->
+        <div class="row">
+          <div class="field">
+            <label for="horsepower">Horsepower (hp)</label>
+            <input type="number" id="horsepower" name="horsepower"
+                   placeholder="e.g. 120" min="60" max="650" required>
+          </div>
+          <div class="field">
+            <label for="mileage">Mileage (km)</label>
+            <input type="number" id="mileage" name="mileage"
+                   placeholder="e.g. 85000" min="0" max="500000" required>
+          </div>
+        </div>
+
+        <!-- Row 4: RPM + Engine Temp -->
+        <div class="row">
+          <div class="field">
+            <label for="rpm">RPM</label>
+            <input type="number" id="rpm" name="rpm"
+                   placeholder="e.g. 2800" min="600" max="7000" required>
+          </div>
+          <div class="field">
+            <label for="engine_temp">Engine Temp (°C)</label>
+            <input type="number" id="engine_temp" name="engine_temp"
+                   placeholder="e.g. 95" min="60" max="150" step="0.1" required>
+          </div>
+        </div>
+
+        <!-- Row 5: Coolant Temp + Oil Pressure -->
+        <div class="row">
+          <div class="field">
+            <label for="coolant_temp">Coolant Temp (°C)</label>
+            <input type="number" id="coolant_temp" name="coolant_temp"
+                   placeholder="e.g. 93" min="55" max="150" step="0.1" required>
+          </div>
+          <div class="field">
+            <label for="oil_pressure">Oil Pressure (bar)</label>
+            <input type="number" id="oil_pressure" name="oil_pressure"
+                   placeholder="e.g. 2.4" min="0.5" max="7" step="0.01" required>
+          </div>
+        </div>
+
+        <!-- Row 6: Fuel Pressure + Battery Voltage -->
+        <div class="row">
+          <div class="field">
+            <label for="fuel_pressure">Fuel Pressure (bar)</label>
+            <input type="number" id="fuel_pressure" name="fuel_pressure"
+                   placeholder="e.g. 7.9" min="2" max="20" step="0.01" required>
+          </div>
+          <div class="field">
+            <label for="battery_voltage">Battery Voltage (V)</label>
+            <input type="number" id="battery_voltage" name="battery_voltage"
+                   placeholder="e.g. 13.1" min="10.5" max="15" step="0.01" required>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn">
+          <span class="btn-text">Run Diagnosis</span>
+          <span class="btn-spinner" hidden>Analyzing…</span>
+        </button>
+      </form>
+
+      <div id="result" class="result hidden" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <!-- Brand → model map injected from Flask -->
+  <script>
+    const BRAND_MODELS = {{ brand_models_json | safe }};
+
+    const brandSel = document.getElementById("brand");
+    const modelSel = document.getElementById("model");
+
+    function populateModels(brand) {
+      const models = BRAND_MODELS[brand] || [];
+      modelSel.innerHTML = models
+        .map(m => `<option value="${m}">${m}</option>`)
+        .join("");
+    }
+
+    // Populate on load with the first brand already selected
+    populateModels(brandSel.value);
+
+    // Re-populate whenever the brand changes
+    brandSel.addEventListener("change", () => populateModels(brandSel.value));
+  </script>
+
+  <script>
+    const form    = document.getElementById("diagForm");
+    const result  = document.getElementById("result");
+    const btn     = document.getElementById("submitBtn");
+    const btnText = btn.querySelector(".btn-text");
+    const spinner = btn.querySelector(".btn-spinner");
+
+    const STATUS_ICONS = { Good: "✅", Fair: "⚠️", Poor: "❌" };
+    const STATUS_CLASS = { Good: "good", Fair: "fair", Poor: "poor" };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      result.className = "result hidden";
+
+      btnText.hidden = true;
+      spinner.hidden = false;
+      btn.disabled   = true;
+
+      const body = new URLSearchParams(new FormData(form));
+
+      try {
+        const res  = await fetch("/predict", { method: "POST", body });
+        const data = await res.json();
+
+        if (data.error) {
+          result.className = "result error";
+          result.innerHTML = `<strong>Error:</strong> ${data.error}`;
+        } else {
+          const icon = STATUS_ICONS[data.prediction] ?? "🔍";
+          const cls  = STATUS_CLASS[data.prediction] ?? "";
+          result.className = `result ${cls}`;
+          result.innerHTML = `
+            <div class="result-icon">${icon}</div>
+            <div class="result-label">Engine Health: <strong>${data.prediction}</strong></div>
+            <div class="result-conf">Confidence: ${data.confidence}%
+              <div class="conf-bar">
+                <div class="conf-fill" style="width:${data.confidence}%"></div>
+              </div>
+            </div>`;
+        }
+      } catch {
+        result.className = "result error";
+        result.textContent = "Could not reach the server. Please try again.";
+      } finally {
+        btnText.hidden = false;
+        spinner.hidden = true;
+        btn.disabled   = false;
+      }
+    });
+  </script>
+</body>
+</html>

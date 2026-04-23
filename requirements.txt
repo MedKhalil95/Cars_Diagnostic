@@ -1,0 +1,13 @@
+# Web server
+flask==3.1.0
+gunicorn==21.2.0
+
+# ML
+# CPU-only torch — smaller image, no GPU needed for inference
+torch==2.3.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Data & preprocessing
+scikit-learn==1.5.2
+joblib==1.4.2
+numpy==1.26.4
+pandas==2.2.2
