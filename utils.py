@@ -16,7 +16,7 @@ def load_artifacts(model_dir: Path = MODEL_DIR):
     Load all persisted artefacts produced by train.py.
     Returns (model, brand_enc, model_enc, engine_enc, health_enc, feature_cols).
     """
-    from model.network import CarDiagnosticNet
+    from network import CarDiagnosticNet
 
     brand_enc    = joblib.load(model_dir / "brand_encoder.pkl")
     model_enc    = joblib.load(model_dir / "model_encoder.pkl")
