@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from utils import load_artifacts, build_feature_vector, decode_prediction
-from model.data.generate_data import BRAND_MODEL_NAMES   # brand → [model, ...] mapping
+from generate_data import BRAND_MODEL_NAMES   # brand → [model, ...] mapping
 
 app = Flask(__name__)
 

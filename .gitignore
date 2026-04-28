@@ -1,0 +1,9 @@
+# Training data — not needed at runtime
+data/
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
