@@ -2,20 +2,21 @@ services:
   - type: web
     name: autodiag
     runtime: python
-    region: frankfurt          # change to: oregon | ohio | singapore | frankfurt
-    plan: free                 # upgrade to starter/standard for always-on
+    region: frankfurt
+    plan: free
 
     # ── Build ────────────────────────────────────────────────────────────────
     buildCommand: pip install -r requirements.txt
 
     # ── Start ────────────────────────────────────────────────────────────────
-    # gunicorn with 2 workers; 1 thread each is fine for CPU inference
-    startCommand: gunicorn app:app --workers 2 --threads 1 --timeout 120 --bind 0.0.0.0:$PORT
+    # --preload   : loads the Flask app (and model) BEFORE forking workers
+    #               so the port opens fast and Render doesn't time out
+    # --workers 1 : free tier has 512 MB RAM; 2 workers would OOM with torch
+    # --timeout 120: gives the cold-start model load enough time
+    startCommand: gunicorn app:app --workers 1 --threads 2 --timeout 120 --preload --bind 0.0.0.0:$PORT
 
-    # ── Health check ─────────────────────────────────────────────────────────
     healthCheckPath: /
 
-    # ── Environment variables ────────────────────────────────────────────────
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
